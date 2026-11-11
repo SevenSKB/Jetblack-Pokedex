@@ -27,13 +27,15 @@ const catIcon=c=>CI[c]?`<span class="ci" title="${CI[c][0]}" role="img" aria-lab
 const tpill=t=>t?`<span class="ty sm ty-${TN[t]}">${ABR[TN[t]]}</span>`:'<span class="pw">var.</span>';
 function mv(raw){const ids=MP[raw.replace(/\*/g,'').trim()];if(!ids)return null;const ms=ids.map(i=>MV[i]);let c=0;
  const power=ms.map(m=>{if(m.new)return `<span class="pw new">${m.u}<i>NEW</i></span>`;if(m.u!=null&&m.u!==m.p){c=1;return `<span class="pw ch"><s>${pwr(m.p)}</s><b>${m.u}</b></span>`}return `<span class="pw">${pwr(m.p)}</span>`}).join('<span class="pw"> / </span>');
+ const num=(v,w)=>w!=null&&w!==v?(c=1,`<span class="pw ch"><s>${v}</s><b>${w}</b></span>`):`<span class="pw">${v}</span>`,sl='<span class="pw"> / </span>',dash=x=>x===0?'—':x;
+ const pp=ms.map(m=>num(m.pp,m.ppn)).join(sl),ac=ms.map(m=>num(dash(m.ac),m.acn==null?null:dash(m.acn))).join(sl);
  const ds=ms.map(m=>{const pre=ms.length>1?`<b class="pre">${esc(m.n)}:</b> `:'';const chips=(m.ch||[]).map(x=>`<span class="mc">${arrow(x)}</span>`).join('');if(m.ch||m.e)c=1;
   return `<div class="ds">${pre}${esc(m.ds||'')}${m.e?`<span class="jb">JetBlack: ${esc(m.e)}</span>`:''}${chips?`<span class="chips2">${chips}</span>`:''}${m.new?`<span class="rp">Replaces ${esc(m.r)}</span>`:''}</div>`}).join('');
- return{c,t:ms.map(m=>tpill(m.t)).join(''),k:ms.map(m=>catIcon(m.c)).join(''),p:power,d:ds}}
+ return{c,t:ms.map(m=>tpill(m.t)).join(''),k:ms.map(m=>catIcon(m.c)).join(''),p:power,pp,ac,d:ds}}
 let Q='';
 const hl=s=>{const t=s.toLowerCase(),i=Q.length>1?t.indexOf(Q):-1;return i<0?esc(s):esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+Q.length))+'</mark>'+esc(s.slice(i+Q.length))};
-const mrow=(lead,raw,src)=>{const m=mv(raw)||{c:0,t:'',k:'',p:'',d:''};return `<div class="mr${m.c?' chg':''}"><span class="lv">${lead}</span><span class="mname">${hl(raw.replace(/\*/g,''))}</span><span class="mty">${m.t}</span><span class="mca">${m.k}</span><span class="mpw">${m.p}</span><span class="mds">${m.d}${src?`<em class="src">${esc(src)}</em>`:''}</span></div>`};
-const mhead=l=>`<div class="mr mh"><span>${l}</span><span>Move</span><span>Type</span><span>Cat.</span><span>Power</span><span>Description</span></div>`;
+const mrow=(lead,raw,src)=>{const m=mv(raw)||{c:0,t:'',k:'',p:'',pp:'',ac:'',d:''};return `<div class="mr${m.c?' chg':''}"><span class="lv">${lead}</span><span class="mname">${hl(raw.replace(/\*/g,''))}</span><span class="mty">${m.t}</span><span class="mca">${m.k}</span><span class="mpw">${m.p}</span><span class="mpp">${m.pp}</span><span class="mac">${m.ac}</span><span class="mds">${m.d}${src?`<em class="src">${esc(src)}</em>`:''}</span></div>`};
+const mhead=l=>`<div class="mr mh"><span>${l}</span><span>Move</span><span>Type</span><span>Cat.</span><span>Power</span><span>PP</span><span>Acc.</span><span>Description</span></div>`;
 // ---------- list view
 const S={gen:0,type:'',chg:0,tm:0,ab:0,q:'',scroll:0};
 function listHTML(){const r=P.filter(e=>(!S.gen||e.n>=GR[S.gen-1][0]&&e.n<=GR[S.gen-1][1])&&(!S.type||e.types.includes(S.type))&&(!S.chg||e.chg)&&(!S.tm||e.tmf)&&(!S.ab||e.abf)&&(!S.q||e.hay.includes(S.q)));
