@@ -58,7 +58,8 @@ const DW={N:'K',F:'WDR',W:'EG',E:'D',G:'FIPLB',I:'FKRS',K:'LY',P:'DY',D:'WGI',L:
  DI={N:'H',D:'E',L:'D',H:'NK',T:'Y',S:'P'},ORD='NFWEGIKPDLYBRHATS';
 const AN={levitate:'immune to Ground',flashfire:'immune to Fire',waterabsorb:'immune to Water',stormdrain:'immune to Water',dryskin:'immune to Water, takes 1.25× from Fire',voltabsorb:'immune to Electric',motordrive:'immune to Electric',lightningrod:'immune to Electric',sapsipper:'immune to Grass',thickfat:'takes ½ from Fire and Ice',heatproof:'takes ½ from Fire',wonderguard:'only supereffective moves hit',solidrock:'takes ¾ from supereffective moves'};
 const MS={0:'0',0.25:'¼',0.5:'½',1:'',2:'2',4:'4'};
-function defH(e,f,tc){const cells=[...ORD].map(a=>{let m=1;for(const d of tc){if((DI[d]||'').includes(a))m=0;else if((DW[d]||'').includes(a))m*=2;else if((DR[d]||'').includes(a))m*=.5}
+const mult=(a,tc)=>{let m=1;for(const d of tc){if((DI[d]||'').includes(a))m=0;else if((DW[d]||'').includes(a))m*=2;else if((DR[d]||'').includes(a))m*=.5}return m};
+function defH(e,f,tc){const cells=[...ORD].map(a=>{const m=mult(a,tc);
   return `<div class="dc"><span class="ty sm ty-${TN[a]}" title="${TN[a]}">${ABR[TN[a]]}</span><span class="dv x${String(m).replace('.','_')}" title="${m}× damage from ${TN[a]} moves">${MS[m]}</span></div>`}).join('');
  const ab=[...new Set(pick(e.ab,f).flatMap(a=>a.text.split('/')).map(x=>x.replace(/\*/g,'').replace(/\[.*?\]/g,'').trim()).filter(x=>AN[nrm(x)]))].map(x=>`${esc(x)} (${AN[nrm(x)]})`);
  return `<p class="note" style="margin-top:0">The effectiveness of each type on ${esc(e.name)}${f?` (${esc(f.l)})`:''}.</p><div class="dg">${cells}</div>${ab.length?`<p class="note">Abilities that change this: ${ab.join('; ')}.</p>`:''}`}
@@ -126,7 +127,7 @@ function locH(e){const rows=LC.R[e.n]||[],st=LC.S[e.n];let h='';
  if(st)h+=`<div class="stat"><b>Static encounter${st.lvl?` · Lv ${st.lvl}`:''}</b>${st.t.map(t=>`<div class="note">${esc(t.replace(/^[-*]+\s*/,''))}</div>`).join('')}</div>`;
  if(rows.length){let last=-1;
   const groups=[];rows.forEach(r=>{const g=groups[groups.length-1];if(g&&g.a===r[0])g.r.push(r);else groups.push({a:r[0],r:[r]})});
-  h+=`<div class="leg">★ = only found in rustling grass, rippling water or dust clouds (the special spots). Chance is out of that spot's own encounter table.</div><div class="lt">`+groups.map(g=>`<div class="lg"><div class="la">${esc(LC.A[g.a])}${g.r[0][7]?'<i>Post-game</i>':''}</div><div class="lrs">`+g.r.map(r=>{const[,m,lo,hi,p,s,n]=r;
+  h+=`<div class="leg">★ = only found in rustling grass, rippling water or dust clouds (the special spots). Chance is out of that spot's own encounter table.</div><div class="lt">`+groups.map(g=>`<div class="lg"><div class="la"><a href="${window.JBArea?JBArea.href(g.a):'#'}">${esc(LC.A[g.a])}</a>${g.r[0][7]?'<i>Post-game</i>':''}</div><div class="lrs">`+g.r.map(r=>{const[,m,lo,hi,p,s,n]=r;
    return `<div class="lr${s?' sp':''}"><span class="lm">${m}</span><span class="ll">Lv ${lo==hi?lo:lo+'–'+hi}</span><span class="lp">${p}%</span><span class="ln">${s?`<b title="Only in ${SPOT[m]}">★ ${SPOT[m]}</b>`:''}${n?`<em>${esc(n)}</em>`:''}</span></div>`}).join('')+'</div></div>').join('')+'</div>'}
  else if(!st)h='<div class="note">No wild encounters listed for this Pokémon.</div>';
  return `<section class="card"><h2>JetBlack locations</h2>${h}</section>`}
@@ -147,9 +148,10 @@ function detailHTML(e,fi){const fs=FORMS[e.n],f=fs?fs[fi||0]:null,ty=f?f.t:e.t,s
 let cur=null,fi=0;
 function showDetail(e){S.scroll=S.scroll;cur=e;fi=0;Q='';const app=document.getElementById('app');document.title=e.name+' — Pokémon JetBlack';
  const draw=()=>{app.innerHTML=detailHTML(e,fi);app.querySelectorAll('.tabs [data-f]').forEach(b=>b.onclick=()=>{fi=+b.dataset.f;draw()})};draw();window.scrollTo(0,0)}
-function route(){const h=decodeURIComponent(location.hash.slice(1)).toLowerCase();const e=byS[h]||(/^\d+$/.test(h)&&byN[+h]);if(e)showDetail(e);else showList()}
+function route(){const h=decodeURIComponent(location.hash.slice(1)).toLowerCase();if(window.JBArea&&JBArea.route(h))return;const e=byS[h]||(/^\d+$/.test(h)&&byN[+h]);if(e)showDetail(e);else showList()}
 window.addEventListener('hashchange',()=>{if(!location.hash||location.hash=='#')route();else{if(document.getElementById('list'))S.scroll=window.scrollY;route()}});
 document.getElementById('theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'),n=d=='dark'?'light':'dark';r.dataset.theme=n;try{localStorage.setItem('jb-theme',n)}catch(e){}};
+window.JBX={img,P,MV,MP,EVO,AB,TN,FORMS,LC,byN,byS,kids,pred,natureOf,mult,ORD,AN,NL,SL,nrm,esc,pick,pills};
 window.JBtest={natureOf,detailHTML,listHTML,byS,byN,P,mv,defH};
 route();
 })();

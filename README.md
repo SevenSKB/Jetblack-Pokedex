@@ -14,6 +14,8 @@ It lists all 649 Pokémon with the changes JetBlack makes to stats, abilities, e
 - Type defenses based on the Gen V type chart (no Fairy type)
 - Best nature suggestions for every Pokémon and form, worked out from its JetBlack stats and level-up moves
 - Wild encounter locations from the JetBlack location list, with levels, chances and ★ for rustling-grass, rippling-water and dust-cloud spots
+- Areas section: every location with its wild Pokémon, static encounters, moved items and shops, searchable by area, Pokémon or item
+- "Ask the Dex" helper that answers questions (locations, natures, moves, evolutions, weaknesses, items) straight from the JetBlack data, with no AI guessing
 - Evolution lines with JetBlack's modified methods marked
 - Level-up learnsets with type, category, power, PP, accuracy and a short description for each move
 - Move changes (power, PP, accuracy, type, effect) shown next to the vanilla Gen V values
