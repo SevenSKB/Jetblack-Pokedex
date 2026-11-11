@@ -125,6 +125,29 @@ function itemH(name){const k=K(name),g=(LC.I||[]).filter(o=>K(o.i)==k),m=Object.
 function summary(e){const t=e.st[0]||{},c=t.u||t.b||t.v||[],n=natureOf(e,null),rows=LC.R[e.n]||[];
  return `<p>${link(e)} #${String(e.n).padStart(3,'0')} · ${[...e.t].map(x=>TN[x]).join('/')}<br>${c.map((x,i)=>`${SL[i]} ${x}`).join(' · ')} · Total ${c.reduce((a,b)=>a+b,0)}<br>Abilities: ${e.ab.map(a=>a.text.replace(/\*/g,'')).join(', ')}${n?`<br>Suggested nature: ${n.a.n}`:''}<br>${rows.length?(x=>`Wild in ${x} area${x>1?'s':''}`)(new Set(rows.map(r=>r[0])).size):LC.S[e.n]?'Static encounter':'Not listed as a wild encounter'}</p><p class="bm">Ask about its locations, evolution, moves, weaknesses or nature.</p>`}
 
+// ---------- trainers (from trainers.js, grouped by area in areas.js)
+const AREAS=window.JBArea?JBArea.groups:[],TRX=[];
+AREAS.forEach(g=>g.tr.forEach(e=>e.T.forEach(t=>{const w=N(t.t).split(/[^a-z0-9]+/).filter(Boolean);TRX.push({g,e,t,key:w[w.length-1]||''})})));
+const TTITLE=new Set('leader elite 4 four pokemon trainer team plasma ace grunt grunts twins'.split(' '));
+const TQ=/\b(team|teams|gym|gyms|leader|leaders|trainer|trainers|battle|battles|fight|fights|roster|party|lineup|levels?|use|uses|has|have|rematch|rematches|elite|e4|champion|rival|boss|bosses|beat|against)\b/;
+function findTrainers(q){const t=' '+N(q)+' ',toks=t.trim().split(/[^a-z0-9]+/).filter(Boolean),tk=new Set();
+ toks.forEach(x=>{tk.add(x);if(x.length>3&&x.endsWith('s'))tk.add(x.slice(0,-1))});if(tk.has('ns'))tk.add('n');
+ const intent=TQ.test(t);let hit=TRX.filter(o=>o.key&&!TTITLE.has(o.key)&&(o.key.length>=3||o.key=='n')&&tk.has(o.key)&&(intent||o.t.b));
+ if(!hit.length&&/\bgyms?\b/.test(t)){const city=toks.filter(x=>x.length>=4&&!STOP.has(x));
+  hit=TRX.filter(o=>o.e.sub=='Gym'&&city.some(c=>K(o.g.name).startsWith(c))&&(o.t.b||/\btrainers\b/.test(t)))}
+ if(!hit.length&&/\b(elite|e4)\b/.test(t))hit=TRX.filter(o=>/^Elite 4/.test(o.t.t)&&!o.e.sub);
+ // narrow by place words in the question ("N at the castle", "Cheren on Route 3", "Clay's gym")
+ const kq=K(q),place=o=>{const w=N(o.g.name).split(/[^a-z0-9]+/).filter(x=>x.length>=4&&!/^(city|town|route|cave|forest|tower|bridge|pokemon|centre|center)$/.test(x));
+  return (kq.includes(K(o.g.name))?2:0)+w.filter(x=>tk.has(x)).length+(/\bgyms?\b/.test(t)&&o.e.sub=='Gym'?1:0)+(/\b(rematch|rematches|post ?game)\b/.test(t)&&/Post|Rematch/i.test((o.e.sub||'')+o.g.name)?1:0)};
+ if(hit.length>1){const best=Math.max(...hit.map(place));if(best>0)hit=hit.filter(o=>place(o)==best)}
+ return hit}
+const monTxt=([nm,it,l,ab,mv])=>`${nm.split('/').map(n=>{const e=PK[K(n.replace(/-[A-Z]$/,''))];return e?link(e):esc(n)}).join('/')}${l?` Lv ${l}`:''}${it?` @ ${esc(it)}`:''}${ab||mv?` <span class="bm">(${esc([ab,mv].filter(Boolean).join(': '))})</span>`:''}`;
+function trainerH(o){const {g,e,t}=o;
+ return `<p><b>${esc(t.t)}</b>, <a href="#area/${g.slug}">${esc(g.name)}</a>${e.sub?` · ${esc(e.sub)}`:''}${t.c?` <span class="bs">${esc(t.c)}</span>`:''}${t.x?`<br><span class="bm">${esc(t.x)}</span>`:''}</p>`+
+  t.G.map(q=>`${q.c?`<p class="bs">${esc(q.c)}</p>`:''}<ul>${q.M.map(m=>`<li>${monTxt(m)}</li>`).join('')}</ul>`).join('')}
+function trainersAns(list){const show=list.slice(0,6);
+ return show.map(trainerH).join('')+(list.length>show.length?`<p class="bm">+${list.length-show.length} more battles. See the area pages.</p>`:'')+`<p class="bm">${esc((window.JBT&&JBT.N[0])||'')}</p>`}
+
 const HELP=`<p>I answer only from the JetBlack data on this site, so I won't guess. Try:</p>`;
 const EX=['Where can I find Axew?','Best nature for Haxorus','Does Snivy learn Leaf Blade?','Who learns Dragon Dance?','What Pokémon are on Route 4?','How does Gible evolve?','Garchomp weaknesses','What does Hurricane do?','Where is the Choice Band?'];
 function answer(q){const t=' '+N(q)+' ',r=parse(q),has=re=>re.test(t);
@@ -133,6 +156,7 @@ function answer(q){const t=' '+N(q)+' ',r=parse(q),has=re=>re.test(t);
   AB_=has(/\babilit/),WK=has(/\b(weak|weakness|weaknesses|resist|resistance|resists|immune|immunit|effective|matchup|counter)/),
   LS=has(/\b(learn|learns|learnset|moves|moveset|movepool|level up|levelup|teach)\b/),WHO=has(/\b(who|which|what pokemon|what pok|list)\b/);
  let out=[];const FL=spotFilter(q);
+ const TRS=findTrainers(q);if(TRS.length)return trainersAns(TRS);
  if(r.fuzzy.length)out.push(`<p class="bm">Reading ${r.fuzzy.map(([a,b])=>`“${esc(a)}” as ${esc(b)}`).join(', ')}.</p>`);
  if(r.pk.length&&r.mv.length){r.pk.slice(0,3).forEach(e=>r.mv.slice(0,3).forEach(m=>out.push(learnCheck(e,m))));return out.join('')}
  // "route 14 surf" / "fishing in route 1": the area wins over the Surf move
@@ -147,8 +171,33 @@ function answer(q){const t=' '+N(q)+' ',r=parse(q),has=re=>re.test(t);
    if(AB_)parts.push(abH(e));if(WK)parts.push(weakH(e));if(LS)parts.push(lsH(e));
    if(!parts.length)parts.push(summary(e));
    out.push((r.pk.length>1?`<h4>${esc(e.name)}</h4>`:'')+parts.join(''))});return out.join('')}
- if(W&&!r.pk.length)return `<p>I couldn't match a Pokémon, move, item or area in that question.</p><p class="bm">Items that JetBlack didn't move are in the same place as in vanilla Black. Trainer rosters aren't searchable here yet.</p>`;
+ if(W&&!r.pk.length)return `<p>I couldn't match a Pokémon, move, item or area in that question.</p><p class="bm">Items that JetBlack didn't move are in the same place as in vanilla Black.</p>`;
  return HELP}
+
+// ---------- optional AI layer
+// When window.JB_AI_URL is set (see ai-worker/README.md), questions go to a small Cloudflare Worker
+// together with the matching JetBlack records below. The model only sees those records and is told
+// to answer from them alone. The records it used are shown under each answer.
+const AI_URL=String(window.JB_AI_URL||'').trim();
+const txt=h=>h.replace(/<br\s*\/?>/g,'\n').replace(/<\/(p|li|h4|div)>/g,'\n').replace(/<li>/g,'- ').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/[ \t]+/g,' ').replace(/\n\s*\n+/g,'\n').trim();
+function aiContext(q){const r=parse(q),parts=[],add=(title,h)=>{const s=txt(h);if(s)parts.push(`## ${title}\n${s}`)};
+ const trs=findTrainers(q);trs.slice(0,8).forEach(o=>add('Trainer battle',trainerH(o)));
+ r.pk.slice(0,3).forEach(e=>{add(e.name+' overview',summary(e));add(e.name+' base stats',statH(e));add(e.name+' abilities',abH(e));add(e.name+' locations',locH(e,null,spotFilter(q)));
+  add(e.name+' evolution',evoH(e));add(e.name+' type matchups',weakH(e));add(e.name+' suggested nature',natH(e));add(e.name+' level-up moves',lsH(e));
+  r.mv.slice(0,3).forEach(m=>add(`Does ${e.name} learn ${m}`,learnCheck(e,m)))});
+ r.mv.slice(0,2).forEach(m=>{add(m+' move data',moveH(m));if(!r.pk.length)add('Who learns '+m,whoLearns(m))});
+ if(r.area.length){add('Wild encounters',areaH(r.area,spotFilter(q)));
+  const gs=new Set();r.area.forEach(k=>AREA[k].forEach(i=>{const g=AREAS.find(x=>x.subs.includes(i));if(g)gs.add(g)}));
+  gs.forEach(g=>g.tr.forEach(e=>e.T.slice(0,25).forEach(t=>add(`Trainer in ${g.name}`,trainerH({g,e,t})))))}
+ r.item.slice(0,2).forEach(i=>add(i+' item',itemH(i)));r.ab.slice(0,2).forEach(a=>add(a+' ability',abilInfo(a)));
+ if(!trs.length&&/\b(gym|leader|leaders|elite|e4|champion|boss|bosses|hardest|strongest|toughest)\b/.test(N(q)))
+  TRX.filter(o=>o.t.b).forEach(o=>parts.push(`## Key battle\n${o.t.t} (${o.g.name}${o.e.sub?' · '+o.e.sub:''}): `+o.t.G.map(g=>(g.c?`[${g.c}] `:'')+g.M.map(m=>`${m[0]}${m[2]?' Lv '+m[2]:''}`).join(', ')).join(' | ')));
+ let s=parts.join('\n\n');if(s.length>14000)s=s.slice(0,14000)+'\n[data truncated]';
+ return s}
+const fmt=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+async function askAI(q,ctx){const c=new AbortController(),to=setTimeout(()=>c.abort(),25000);
+ try{const r=await fetch(AI_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({q,ctx}),signal:c.signal});
+  if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(!j.a)throw new Error('empty');return j.a}finally{clearTimeout(to)}}
 
 // ---------- UI
 const css=`#askb{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:40;border:0;border-radius:99px;padding:12px 18px;background:var(--ink);color:var(--bg);font:600 15px/1 inherit;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)}
@@ -162,18 +211,27 @@ const css=`#askb{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inse
 .exs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.exs button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:4px 10px;font:12.5px inherit;font-family:inherit;cursor:pointer}
 #askf{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}#aski{flex:1;min-width:0;padding:10px 12px;font-size:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);outline:none;font-family:inherit}#aski:focus{border-color:var(--ink)}
 #askf button{border:0;border-radius:12px;padding:0 14px;background:var(--ink);color:var(--bg);font-weight:600;cursor:pointer;font-family:inherit}
+.src{margin-top:6px;border-top:1px solid var(--line);padding-top:4px}.src summary{cursor:pointer;color:var(--mut);font-size:12.5px}.src pre{white-space:pre-wrap;font:12px/1.4 inherit;font-family:inherit;color:var(--mut);max-height:240px;overflow:auto}
 @media(max-width:560px){#askp{right:8px;left:8px;width:auto;bottom:calc(70px + env(safe-area-inset-bottom,0px));height:calc(100vh - 140px)}}`;
 document.head.insertAdjacentHTML('beforeend',`<style>${css}</style>`);
 document.body.insertAdjacentHTML('beforeend',`<button id="askb" aria-expanded="false" aria-controls="askp">Ask the Dex</button>
-<div id="askp" role="dialog" aria-label="Ask the JetBlack Dex"><header><div><b>Ask the JetBlack Dex</b><small>Answers come only from JetBlack data</small></div><button id="askx" aria-label="Close">×</button></header>
+<div id="askp" role="dialog" aria-label="Ask the JetBlack Dex"><header><div><b>Ask the JetBlack Dex</b><small>${AI_URL?'AI answers, grounded in JetBlack data':'Answers come only from JetBlack data'}</small></div><button id="askx" aria-label="Close">×</button></header>
 <div id="askm" aria-live="polite"></div><form id="askf"><input id="aski" autocomplete="off" placeholder="e.g. Where can I find Deino?" aria-label="Your question"><button>Ask</button></form></div>`);
 const p=document.getElementById('askp'),b=document.getElementById('askb'),m=document.getElementById('askm'),i=document.getElementById('aski');
 const exH=()=>`<div class="exs">${EX.map(x=>`<button type="button">${esc(x)}</button>`).join('')}</div>`;
 const say=(cls,h)=>{m.insertAdjacentHTML('beforeend',`<div class="${cls}">${h}</div>`);m.scrollTop=m.scrollHeight};
-function ask(q){q=q.trim();if(!q)return;say('qm',esc(q));let a;try{a=answer(q)}catch(err){a='<p>Something went wrong reading the data for that question.</p>'}say('am',a+(a==HELP?exH():''))}
+let busy=false;
+async function ask(q){q=q.trim();if(!q||busy)return;say('qm',esc(q));let a;try{a=answer(q)}catch(err){a='<p>Something went wrong reading the data for that question.</p>'}
+ const ctx=AI_URL?aiContext(q):'';
+ if(!ctx){say('am',a+(a==HELP?exH():''));return}
+ busy=true;say('am ai-wait','<p class="bm">Looking it up…</p>');const w=m.lastElementChild;
+ try{const res=await askAI(q,ctx);
+  w.className='am';w.innerHTML=`<p>${fmt(res)}</p><details class="src"><summary>JetBlack data used</summary>${a!=HELP?a:`<pre>${esc(ctx)}</pre>`}</details><p class="bm">AI answer from the data above. If they disagree, trust the data.</p>`}
+ catch(err){w.className='am';w.innerHTML=a+(a==HELP?exH():'')+'<p class="bm">The AI helper is unavailable right now (it may have hit its free daily limit), so this is the direct data answer.</p>'}
+ finally{busy=false;m.scrollTop=m.scrollHeight}}
 const toggle=on=>{p.classList.toggle('on',on);b.setAttribute('aria-expanded',on);if(on){if(!m.children.length)say('am',HELP+exH());i.focus()}};
 b.onclick=()=>toggle(!p.classList.contains('on'));document.getElementById('askx').onclick=()=>toggle(false);
 document.getElementById('askf').onsubmit=ev=>{ev.preventDefault();ask(i.value);i.value=''};
 m.addEventListener('click',ev=>{const x=ev.target.closest('.exs button');if(x)ask(x.textContent);if(ev.target.closest('a')&&innerWidth<560)toggle(false)});
-window.JBbot={answer,parse};
+window.JBbot={answer,parse,aiContext};
 })();

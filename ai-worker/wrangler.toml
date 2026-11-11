@@ -1,0 +1,12 @@
+name = "jetblack-dex-ai"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[ai]
+binding = "AI"
+
+[vars]
+# Workers AI model. Check https://developers.cloudflare.com/workers-ai/models/ if this one is retired.
+MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+# Sites allowed to call the Worker (comma-separated). Add your own domain if it changes.
+ALLOWED_ORIGINS = "https://sevenskb.github.io,http://localhost:8765"
