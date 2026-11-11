@@ -83,6 +83,53 @@ function evoTree(n,cur){const k=kids[n]||[];return `<div class="en">${evoCard(n,
 function evoH(e){let r=e.n;while(pred[r])r=pred[r];return (kids[r]||[]).length?`<div class="evo">${evoTree(r,e.n)}</div>`:'<div class="note">This Pokémon does not evolve.</div>'}
 function tmH(e){const rows=e.tm.map(t=>{const m=t.match(/(TM|HM)\s*(\d+)\s+(.+?)\s+via\s+(?:TM|HM)\s*(?:\((.+?)\))?/i);return m?mrow(`<b class="tmn">${m[1].toUpperCase()}${m[2]}</b>`,m[3],m[4]):`<div class="note">${esc(t)}</div>`}).join('');return `<div class="mt">${mhead('TM')}${rows}</div>`}
 function learnH(e,f){return pick(e.ls,f).map(l=>(l.label?`<div class="form">${esc(l.label)}</div>`:'')+l.notes.map(t=>`<div class="note">${esc(t)}</div>`).join('')+`<div class="mt">${mhead('Lv')}${l.mv.map(m=>mrow(m[0],m[1])).join('')}</div>`).join('')}
+// ---------- natures (same as vanilla: +10% / -10%)
+const NT={'Adamant':['atk','spa'],'Jolly':['spe','spa'],'Modest':['spa','atk'],'Timid':['spe','atk'],'Bold':['def','atk'],'Impish':['def','spa'],'Calm':['spd','atk'],'Careful':['spd','spa'],'Brave':['atk','spe'],'Quiet':['spa','spe'],'Relaxed':['def','spe'],'Sassy':['spd','spe'],'Naive':['spe','spd'],'Hasty':['spe','def'],'Lonely':['atk','def'],'Mild':['spa','def'],'Naughty':['atk','spd'],'Rash':['spa','spd']};
+const NN=(u,d)=>Object.keys(NT).find(k=>NT[k][0]==u&&NT[k][1]==d);
+const NL={hp:'HP',atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe'};
+const NOPOW=/^(Hyper Beam|Giga Impact|Blast Burn|Frenzy Plant|Hydro Cannon|Roar of Time|Rock Wrecker|Explosion|Selfdestruct|Self-Destruct|Last Resort|Dream Eater|Fake Out|Focus Punch|Future Sight|Doom Desire|Counter|Mirror Coat|Bide|Endeavor|Final Gambit|Spit Up|Belch|Synchronoise)$/i;
+// strongest damaging moves per category, weighted by STAB and accuracy
+function atkScore(e,f,ty){const sc={P:[],S:[]};
+ pick(e.ls,f).forEach(l=>l.mv.forEach(m=>{const raw=m[1].replace(/\*/g,'').trim();if(NOPOW.test(raw))return;const ids=MP[raw];if(!ids)return;const x=MV[ids[0]];
+  if(!x||!sc[x.c])return;let p=x.u!=null?x.u:x.p;if(p==='var')p=60;if(typeof p!=='number'||p<40)return;
+  const a=x.acn!=null?x.acn:x.ac;const ac=a>0?a/100:1;const stab=x.t&&ty.includes(x.t)?1.5:1;sc[x.c].push({k:raw,v:p*ac*stab})}));
+ const top=a=>{const seen=new Set(),r=[];a.sort((p,q)=>q.v-p.v).forEach(o=>{if(!seen.has(o.k)&&r.length<3){seen.add(o.k);r.push(o)}});return r.reduce((s,o)=>s+o.v,0)/3};
+ return{P:top(sc.P),S:top(sc.S)}}
+function natureOf(e,f){const gs=f?e.st.filter(g=>g.label&&rx(f).test(g.label)):e.st,g=(gs[0]||e.st[0])||{},c=g.u||g.b||g.v;if(!c)return null;
+ const [hp,atk,def,spa,spd,spe]=c,ty=f?f.t:e.t,sc=atkScore(e,f,ty),abs=pick(e.ab,f).map(a=>a.text.replace(/\*/g,'')).join('/');
+ const hasM=n=>pick(e.ls,f).some(l=>l.mv.some(m=>m[1].replace(/\*/g,'').trim()==n));
+ let pd=atk*sc.P*(/Huge Power|Pure Power/.test(abs)?2:1),sd=spa*sc.S;
+ let kind=pd>=sd*1.08?'P':sd>=pd*1.08?'S':(Math.min(atk,spa)>=85?'M':pd>=sd?'P':'S');
+ if(!pd&&!sd)kind=atk>=spa?'P':'S';
+ const off=Math.max(atk,spa),bulk=Math.max(def,spd),slow=hasM('Gyro Ball')&&spe<=45;
+ const role=bulk>=off+15&&spe<off+25&&hp+def+spd>=250?'D':'A';
+ let a,b,why;
+ if(role=='D'){const useP=kind=='P'||(kind=='M'&&atk>=spa),hd=def>=spd?'def':'spd',od=hd=='def'?'spd':'def',low=useP?'spa':'atk';
+  a=NN(hd,low);b=NN(od,low);why=`Bulky ${hd=='def'?'physical':'special'} wall (${NL[hd]} ${hd=='def'?def:spd}). Boosts bulk, drops the unused attacking stat (${NL[low]}).`;
+  if(slow){a=NN(hd,'spe');why+=' Has Gyro Ball, so −Spe is fine.'}}
+ else if(kind=='M'){const lowd=def<=spd?'def':'spd';
+  if(spe>=60){a=NN('spe',lowd);b=atk>=spa?NN('atk',lowd):NN('spa',lowd);why='Hits with both physical and special moves, so neither attack is cut. Speed boosted.'}
+  else{a=atk>=spa?NN('atk',lowd):NN('spa',lowd);b=atk>=spa?NN('spa',lowd):NN('atk',lowd);why='Hits with both physical and special moves, so neither attack is cut.'}}
+ else{const pw=kind=='P'?'atk':'spa',low=kind=='P'?'spa':'atk',kd=kind=='P'?'Physical':'Special',fast=spe>=60;
+  if(slow){a=NN(pw,'spe');b=NN(pw,low);why=`${kd} attacker with Gyro Ball and ${spe} base Speed, so −Spe helps.`}
+  else if(fast){a=NN('spe',low);b=NN(pw,low);why=`${kd} attacker with ${spe} base Speed. Outspeeding matters more than raw power; ${NL[low]} is unused.`}
+  else{a=NN(pw,low);b=spe>=40?NN('spe',low):NN(pw,'spe');why=`${kd} attacker with only ${spe} base Speed, so power is the better boost.${spe>=40?'':' Brave/Quiet style is an option if you want to move last.'}`}}
+ const o=n=>({n,u:NT[n][0],d:NT[n][1]});
+ return{a:o(a),b:b&&b!=a?o(b):null,why}}
+function natureH(e,f){const n=natureOf(e,f);if(!n)return '';
+ const nc=x=>`<div class="nat"><b>${x.n}</b><span class="up">+${NL[x.u]}</span><span class="dn">−${NL[x.d]}</span></div>`;
+ return `<section class="card"><h2>Best nature</h2><div class="nats">${nc(n.a)}${n.b?`<div class="alt">Alternative</div>${nc(n.b)}`:''}</div><div class="note">${esc(n.why)}</div></section>`}
+// ---------- wild locations (from the JetBlack location list)
+const LC=window.JBL||{A:[],R:{},S:{}};
+const SPOT={'Grass':'Rustling grass','Dark grass':'Rustling grass','Surfing':'Rippling water','Fishing':'Rippling water','Land':'Dust cloud','Sand':'Dust cloud'};
+function locH(e){const rows=LC.R[e.n]||[],st=LC.S[e.n];let h='';
+ if(st)h+=`<div class="stat"><b>Static encounter${st.lvl?` · Lv ${st.lvl}`:''}</b>${st.t.map(t=>`<div class="note">${esc(t.replace(/^[-*]+\s*/,''))}</div>`).join('')}</div>`;
+ if(rows.length){let last=-1;
+  const groups=[];rows.forEach(r=>{const g=groups[groups.length-1];if(g&&g.a===r[0])g.r.push(r);else groups.push({a:r[0],r:[r]})});
+  h+=`<div class="leg">★ = only found in rustling grass, rippling water or dust clouds (the special spots). Chance is out of that spot's own encounter table.</div><div class="lt">`+groups.map(g=>`<div class="lg"><div class="la">${esc(LC.A[g.a])}${g.r[0][7]?'<i>Post-game</i>':''}</div><div class="lrs">`+g.r.map(r=>{const[,m,lo,hi,p,s,n]=r;
+   return `<div class="lr${s?' sp':''}"><span class="lm">${m}</span><span class="ll">Lv ${lo==hi?lo:lo+'–'+hi}</span><span class="lp">${p}%</span><span class="ln">${s?`<b title="Only in ${SPOT[m]}">★ ${SPOT[m]}</b>`:''}${n?`<em>${esc(n)}</em>`:''}</span></div>`}).join('')+'</div></div>').join('')+'</div>'}
+ else if(!st)h='<div class="note">No wild encounters listed for this Pokémon.</div>';
+ return `<section class="card"><h2>JetBlack locations</h2>${h}</section>`}
 function detailHTML(e,fi){const fs=FORMS[e.n],f=fs?fs[fi||0]:null,ty=f?f.t:e.t,sp=f?f.sp:null,pv=byN[e.n-1],nx=byN[e.n+1];
  const tabs=fs?`<div class="tabs">${fs.map((x,i)=>`<button class="chip${i==(fi||0)?' on':''}" data-f="${i}">${esc(x.l)}</button>`).join('')}</div>`:'';
  const st=statsH(e,f),bst=(()=>{const gs=f?e.st.filter(g=>g.label&&rx(f).test(g.label)):e.st;const g=(gs[0]||e.st[0])||{},c=g.u||g.b||g.v;return c?c.reduce((a,b)=>a+b,0):null})();
@@ -90,8 +137,10 @@ function detailHTML(e,fi){const fs=FORMS[e.n],f=fs?fs[fi||0]:null,ty=f?f.t:e.t,s
  <section class="hero"><div class="pic">${img(e,1,sp)}</div><div><div class="no">#${String(e.n).padStart(3,'0')}</div><h1>${esc(e.name)}</h1><div class="pills">${pills(ty)}</div>${bst?`<div class="note">Base stat total: <b style="color:var(--ink)">${bst}</b></div>`:''}${tabs}</div></section>
  <section class="card"><h2>Abilities</h2>${abilitiesH(e,f)||'<div class="note">No ability data.</div>'}</section>
  <section class="card"><h2>Base stats</h2>${st||'<div class="note">No stat data.</div>'}</section>
+ ${natureH(e,f)}
  <section class="card"><h2>Type defenses</h2>${defH(e,f,ty)}</section>
  <section class="card"><h2>Evolution</h2>${evoH(e)}</section>
+ ${locH(e)}
  ${e.tm.length?`<section class="card"><h2>TM / HM changes</h2>${tmH(e)}</section>`:''}
  ${e.notes.length?`<section class="card"><h2>Notes</h2>${e.notes.map(t=>`<div class="note">${esc(clean(t))}</div>`).join('')}</section>`:''}
  <section class="card"><h2>Level-up learnset</h2><div class="leg">Power: <s>vanilla</s> → JetBlack · highlighted rows were changed · NEW = added from a later generation</div>${learnH(e,f)||'<div class="note">No learnset listed.</div>'}</section>`}
@@ -101,6 +150,6 @@ function showDetail(e){S.scroll=S.scroll;cur=e;fi=0;Q='';const app=document.getE
 function route(){const h=decodeURIComponent(location.hash.slice(1)).toLowerCase();const e=byS[h]||(/^\d+$/.test(h)&&byN[+h]);if(e)showDetail(e);else showList()}
 window.addEventListener('hashchange',()=>{if(!location.hash||location.hash=='#')route();else{if(document.getElementById('list'))S.scroll=window.scrollY;route()}});
 document.getElementById('theme').onclick=()=>{const r=document.documentElement,d=r.dataset.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'),n=d=='dark'?'light':'dark';r.dataset.theme=n;try{localStorage.setItem('jb-theme',n)}catch(e){}};
-window.JBtest={detailHTML,listHTML,byS,byN,P,mv,defH};
+window.JBtest={natureOf,detailHTML,listHTML,byS,byN,P,mv,defH};
 route();
 })();

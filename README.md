@@ -12,6 +12,8 @@ It lists all 649 Pokémon with the changes JetBlack makes to stats, abilities, e
 - Base stats shown against their vanilla values
 - Abilities with descriptions, including abilities made standard by the hack
 - Type defenses based on the Gen V type chart (no Fairy type)
+- Best nature suggestions for every Pokémon and form, worked out from its JetBlack stats and level-up moves
+- Wild encounter locations from the JetBlack location list, with levels, chances and ★ for rustling-grass, rippling-water and dust-cloud spots
 - Evolution lines with JetBlack's modified methods marked
 - Level-up learnsets with type, category, power, PP, accuracy and a short description for each move
 - Move changes (power, PP, accuracy, type, effect) shown next to the vanilla Gen V values
